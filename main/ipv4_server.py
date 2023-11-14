@@ -25,17 +25,21 @@ src = Path(os.path.join(os.path.dirname(__file__), "./src"))
 server.path("/", src)
 
 
-@server.api("/image", image_list=server.son_path("/image/"))
+@server.api("/image", image_list=server.list_subpaths("/image/"))
 def _(handler: CustomHandler, image_list):
     server.WEB_DICT[random.choice(image_list)](handler)
 
 
-server.redirect(301, "/", "/index/")
-server.redirect(302, "/doc", "https://karisaya.github.io/")
-server.redirect(302, "/server", f"http://[{get_my_IPv6()}]:{8888}/")
+# server.redirect(301, "/", "/index/")
+# server.redirect(302, "/doc", "https://karisaya.github.io/")
+# server.redirect(302, "/server", f"http://[{get_my_IPv6()}]:{8888}/")
 
 server.path_mapping("/list", "/")
-server.listing("/list", src)  # 用目录覆盖映射
+server.listing_src("/list", src)  # 用目录覆盖映射
+
+
+# for x in server.WEB_DICT:
+#     print(x)
 
 if __name__ == "__main__":
     print("IPv4 服务器正在启动")

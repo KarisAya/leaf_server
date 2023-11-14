@@ -9,7 +9,14 @@ from pathlib import Path
 class Server:
     WEB_DICT: Dict[str, Callable] = {}
 
-    def web(self, network_path: Path, Content_type: str = "text/html"):
+    @staticmethod
+    def path_to_url(path: Path) -> str:
+        result = str(path).replace("\\", "/")
+        if path.is_dir():
+            result += "/"
+        return urllib.parse.quote(result)
+
+    def web(self, network_path: Path, Content_type: str):
         """
         添加web资源
         """
@@ -21,40 +28,38 @@ class Server:
                 handler.end_headers()
                 return function(handler)
 
-            self.WEB_DICT[
-                urllib.parse.quote(str(network_path).replace("\\", "/"))
-            ] = wrapper
+            self.WEB_DICT[self.path_to_url(network_path)] = wrapper
 
         return decorator
 
-    def file(self, network_path: Path, src_file: Path, Content_type: str):
+    def file(self, network_path: Path, src_path: Path, Content_type: str):
         """
         文件添加为web资源
             network_path:网络路径
             src_path:本地资源路径
             Content_type:响应类型
         """
-        with open(src_file, "rb") as f:
+        with open(src_path, "rb") as f:
             resp = f.read()
 
         @self.web(network_path, Content_type)
         def _(handler: http.server.SimpleHTTPRequestHandler):
             handler.wfile.write(resp)
 
-    def html(self, network_path: Path, src_file: Path):
-        self.file(network_path, src_file, "text/html")
+    def html(self, network_path: Path, src_path: Path):
+        self.file(network_path, src_path, "text/html")
 
-    def plain(self, network_path: Path, src_file: Path):
-        self.file(network_path, src_file, "text/plain")
+    def plain(self, network_path: Path, src_path: Path):
+        self.file(network_path, src_path, "text/plain")
 
-    def javascript(self, network_path: Path, src_file: Path):
-        self.file(network_path, src_file, "application/javascript")
+    def javascript(self, network_path: Path, src_path: Path):
+        self.file(network_path, src_path, "application/javascript")
 
-    def image(self, network_path: Path, src_file: Path, ext: str = "png"):
-        self.file(network_path, src_file, f"image/{ext}")
+    def image(self, network_path: Path, src_path: Path, ext: str = "png"):
+        self.file(network_path, src_path, f"image/{ext}")
 
-    def video(self, network_path: Path, src_file: Path, ext: str = "mp4"):
-        self.file(network_path, src_file, f"video/{ext}")
+    def video(self, network_path: Path, src_path: Path, ext: str = "mp4"):
+        self.file(network_path, src_path, f"video/{ext}")
 
     def path(self, network_path: Path, src_path: Path):
         """
@@ -64,43 +69,29 @@ class Server:
         """
         src_path = Path(src_path)
         network_path = Path(network_path)
-        for son_src_path in src_path.iterdir():
-            son_network_path = network_path / son_src_path.relative_to(src_path)
-            if son_src_path.is_dir():
-                self.path(son_network_path, son_src_path)
+        for src_subpath in src_path.iterdir():
+            network_subpath = network_path / src_subpath.relative_to(src_path)
+            if src_subpath.is_dir():
+                self.path(network_subpath, src_subpath)
                 continue
-            if son_src_path.name == "index.html":
-                self.html(son_network_path, son_src_path)
-                self.inner_redirect(son_network_path.parent, son_network_path)
+            if src_subpath.name == "index.html":
+                self.html(network_subpath, src_subpath)
+                self.inner_redirect(
+                    self.path_to_url(network_subpath.parent),
+                    self.path_to_url(network_subpath),
+                )
                 continue
-            ext = son_src_path.suffix
+            ext = src_subpath.suffix
             if ext in {".html"}:
-                self.html(son_network_path, son_src_path)
+                self.html(network_subpath, src_subpath)
             elif ext in {".js"}:
-                self.javascript(son_network_path, son_src_path)
+                self.javascript(network_subpath, src_subpath)
             elif ext in {".jpg", ".png", ".jpeg", "gif", "webp"}:
-                self.image(son_network_path, son_src_path, ext.lstrip("."))
+                self.image(network_subpath, src_subpath, ext.lstrip("."))
             elif ext in {".mp4", ".avi", ".mkv", "webm"}:
-                self.video(son_network_path, son_src_path, ext.lstrip("."))
+                self.video(network_subpath, src_subpath, ext.lstrip("."))
             else:
-                self.plain(son_network_path, son_src_path)
-
-    def path_mapping(self, network_path: str, mapping_path: str):
-        """
-        网络位置映射另一个网络位置
-            network_path:网络位置
-            mapping_path:映射的网络位置
-        """
-        network_path = network_path.replace("\\", "/").rstrip("/") or "/"
-        mapping_path = mapping_path.replace("\\", "/").rstrip("/") or "/"
-        temp_path = [
-            path
-            for path in self.WEB_DICT.keys()
-            if path.startswith(mapping_path) and not path.startswith(network_path)
-        ]
-        l = len(mapping_path) - 1
-        for path in temp_path:
-            self.WEB_DICT[network_path + path[l:]] = self.WEB_DICT[path]
+                self.plain(network_subpath, src_subpath)
 
     def api(self, network_path: Path, **kwargs):
         """
@@ -117,10 +108,28 @@ class Server:
 
         return decorator
 
-    def son_path(self, network_path: str):
+    def path_mapping(self, network_path: str, mapping_path: str):
+        """
+        网络位置映射另一个网络位置
+            network_path:网络位置
+            mapping_path:映射的网络位置
+            network_path 不能是 mapping_path 的子目录
+        """
+        network_path = network_path.replace("\\", "/").rstrip("/") or "/"
+        mapping_path = mapping_path.replace("\\", "/").rstrip("/")
+        temp_path = [
+            path
+            for path in self.WEB_DICT.keys()
+            if path.startswith(mapping_path) and not path.startswith(network_path)
+        ]
+        l = len(mapping_path)
+        for path in temp_path:
+            self.WEB_DICT[network_path + path[l:]] = self.WEB_DICT[path]
+
+    def list_subpaths(self, network_path: str):
         return [x for x in self.WEB_DICT if x.startswith(network_path)]
 
-    def listing(self, network_path: Path, src_path: Path):
+    def listing_src(self, network_path: Path, src_path: Path):
         """
         展示本地路径，包括子文件夹
             network_path:网络路径
@@ -129,21 +138,18 @@ class Server:
         src_path = Path(src_path)
         network_path = Path(network_path)
         self.dir_list(network_path, src_path)
-        for son_src_path in src_path.iterdir():
-            son_network_path = network_path / son_src_path.relative_to(src_path)
-            if son_src_path.is_dir():
-                self.listing(son_network_path, son_src_path)
+        for src_subpath in src_path.iterdir():
+            network_subpath = network_path / src_subpath.relative_to(src_path)
+            if src_subpath.is_dir():
+                self.listing_src(network_subpath, src_subpath)
 
     def dir_list(self, network_path: Path, src_path: Path):
         body = []
-        for f in src_path.iterdir():
-            f_network_path = str(network_path / f.relative_to(src_path)).replace(
-                "\\", "/"
-            )
-            f_network_path = f_network_path + "/" if f.is_dir() else f_network_path
-            body.append(f'<li><a href="{f_network_path}">{f.name}</a></li>')
+        for src_subpath in src_path.iterdir():
+            network_subpath = network_path / src_subpath.relative_to(src_path)
+            network_subpath = self.path_to_url(network_subpath)
+            body.append(f'<li><a href="{network_subpath}">{src_subpath.name}</a></li>')
         body = "\n".join(body)
-        network_path = str(network_path).replace("\\", "/")
         resp = f"""
         <!DOCTYPE html>
         <html lang="cn">
@@ -153,7 +159,7 @@ class Server:
             <title>{src_path.name}</title>
         </head>
         <body>
-            <h1>Directory listing for {network_path}</h1>
+            <h1>Directory listing for {str(network_path).replace("\\","/")}</h1>
             <hr>
             <ul>
             {body}
@@ -167,34 +173,32 @@ class Server:
         def _(handler: http.server.SimpleHTTPRequestHandler):
             handler.wfile.write(resp)
 
-    def inner_redirect(self, network_path: str, redirect_path: str):
+    def inner_redirect(self, form_url: str, to_url: str):
         """
         内部重定向
         """
-        network_path = str(network_path).replace("\\", "/")
-        redirect_path = str(redirect_path).replace("\\", "/")
-        self.WEB_DICT[network_path] = self.WEB_DICT[redirect_path]
+        self.WEB_DICT[form_url] = self.WEB_DICT[to_url]
 
-    def redirect(self, status: Literal[301, 302], network_path: str, url: str):
+    def redirect(self, status: Literal[301, 302], form_url: str, to_url: str):
         """
         重定向
         """
 
         def wrapper(handler: http.server.SimpleHTTPRequestHandler):
             handler.send_response(status)
-            handler.send_header("Location", url)
+            handler.send_header("Location", to_url)
             handler.end_headers()
 
-        self.WEB_DICT[network_path] = wrapper
+        self.WEB_DICT[form_url] = wrapper
 
-    def proxy(self, network_path: str, url: str):
+    def proxy(self, key: str, url: str):
         """
         代理
         """
         parsed_url = urllib.parse.urlparse(url)
         host = parsed_url.hostname
         port = parsed_url.port
-        path = parsed_url.path.lstrip("/")
+        path = parsed_url.path
 
         def wrapper(handler: http.server.SimpleHTTPRequestHandler):
             conn = http.client.HTTPConnection(host, port)
@@ -206,7 +210,7 @@ class Server:
                     return request(resp.getheader("Location"))
                 return resp
 
-            resp = request(path + network_path)
+            resp = request(path)
             handler.send_response(resp.status)
             for header in resp.getheaders():
                 handler.send_header(*header)
@@ -214,4 +218,4 @@ class Server:
             handler.wfile.write(resp.read())
             conn.close()
 
-        self.WEB_DICT[network_path] = wrapper
+        self.PROXY_DICT[key] = wrapper
