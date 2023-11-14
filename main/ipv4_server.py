@@ -43,4 +43,4 @@ server.listing_src("/list", src)  # 用目录覆盖映射
 
 if __name__ == "__main__":
     print("IPv4 服务器正在启动")
-    http.server.HTTPServer(("0.0.0.0", 8888), CustomHandler).serve_forever()
+    http.server.HTTPServer(("0.0.0.0", 8080), CustomHandler).serve_forever()
