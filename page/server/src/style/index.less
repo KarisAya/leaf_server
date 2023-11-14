@@ -15,15 +15,6 @@ body {
     background-color: #FFFFFF00;
 }
 
-#header {
-    background-color: #FFFFFF33;
-    color: #4cf;
-    padding: 80px;
-    text-align: center;
-    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-}
-
 #background {
     position: fixed;
     top: 0;
@@ -34,37 +25,81 @@ body {
     background-size: cover;
 }
 
-#info {
-    position: fixed;
-    top: 280px;
-    left: 2%;
-    width: 30%;
-    height: 60%;
-    border-radius: 5px;
-    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.5);
-    color: black;
-    background-color: #ffffffAA;
+#header {
     display: flex;
     flex-flow: column;
     justify-content: center;
     align-items: center;
+    background-color: #FFFFFF33;
+    color: #4cf;
+    height: 20%;
     text-align: center;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
 }
 
+#terminal,
 #list {
     position: fixed;
-    top: 280px;
-    left: 40%;
-    width: 58%;
+    top: 30%;
     height: 60%;
     border-radius: 5px;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.5);
-    background-color: #ffffffAA;
+    background-color: #FFFFFF99;
     display: flex;
     flex-flow: column;
+    backdrop-filter: blur(4px);
+}
+
+#terminal {
+    left: 40%;
+    width: 58%;
+
+    #input {
+        display: flex;
+        flex-flow: row;
+        height: 10%;
+
+        #input_text,
+        #input_button {
+            background-color: #FFFFFFAA;
+            height: 100%;
+            display: flex;
+            flex-flow: column;
+            align-items: center;
+            font-size: large;
+            border: 1px solid #4cf;
+            outline: none;
+            margin-top: auto;
+        }
+
+        #input_text {
+            color: black;
+            width: 90%;
+        }
+
+        #input_button {
+            width: 10%;
+            color: #4cf;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        #input_button:hover {
+            background-color: #FFFFFF;
+            box-shadow: 5px 5px 10px #44CCFFAA;
+        }
+    }
+
+    #output {
+        height: 90%;
+        width: 100%;
+    }
+}
+
+#list {
+    left: 2%;
+    width: 30%;
     justify-content: center;
     align-items: center;
-    text-align: center;
-    backdrop-filter: blur(4px);
 }

@@ -6,12 +6,17 @@
     <title>小叶子 Server Page</title>
   </head>
   <body>
+    <div id="background"></div>
     <div id="header">
       <h1>小叶子 Server Page</h1>
     </div>
-    <div id="background"></div>
-    <object id="info" width="100%" height="100%"></object>
     <object id="list" width="100%" height="100%"></object>
-    <div id="index"></div>
+    <div id="terminal">
+      <div id="output"></div>
+      <div id="input">
+        <input type="text" placeholder="在此输入指令" id="input_text" />
+        <button title="Submit Form" id="input_button"><b>发送</b></button>
+      </div>
+    </div>
   </body>
 </html>
