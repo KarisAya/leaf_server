@@ -14,7 +14,7 @@ module.exports = {
     mode:"production",
     entry:"./src/index.ts",
     resolve:{extensions: ['.ts', '.js'],},   
-    output:{path:path.resolve(__dirname,"dist"), filename:"bundle.js",},
+    output:{path:path.resolve(__dirname,"../../main/src/index"), filename:"bundle.js",},
     module:{rules :[
         {test:/\.ts$/, use:"ts-loader", exclude:/node_modules/,},
         {test:/\.less$/, use:lessUse, exclude:/node_modules/,},

@@ -1,61 +1,42 @@
 import socket
 import http.server
 import http.client
+import os
+import sys
 import random
 from pathlib import Path
 from redirect_ipv6 import get_my_IPv6
 from Server import Server
 
 
-server = Server()
-
-
 class CustomHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        print(self.path)
+        self.path = self.path.rstrip("/") or "/"
         if self.path in server.WEB_DICT:
             return server.WEB_DICT[self.path](self)
-        else:
-            self.send_response(301)
-            self.send_header("location", f"http://[{get_my_IPv6()}]:{12345}")
-            self.end_headers()
+        self.send_response(404)
+        self.end_headers()
 
 
 class HTTPServerV6(http.server.HTTPServer):
     address_family = socket.AF_INET6
 
 
-server.redirect(301, "/", "/server/")
-
-
-@server.add_page("/server/")
-def _(handler: CustomHandler):
-    with open("./src/server/index.html", "rb") as f:
-        handler.wfile.write(f.read())
-
-
-@server.add_page("/server/bundle.js", ("Content-Type", "application/javascript"))
-def _(handler: CustomHandler):
-    with open("./src/server/bundle.js", "rb") as f:
-        handler.wfile.write(f.read())
-
-
-image_folder = Path("./src/image")
-
-
-@server.add_page("/image", ("Content-type", "image/png"))
-def _(handler: CustomHandler):
-    files = [f for f in image_folder.iterdir() if f.is_file()]
-    file = random.choice(files)
-    with open(file, "rb") as f:
-        handler.wfile.write(f.read())
-
-
-@server.add_page("/info")
-def _(handler: CustomHandler):
-    handler.wfile.write("Hello World".encode())
-
-
 if __name__ == "__main__":
-    print("IPv6 服务器正在启动")
-    HTTPServerV6(("::", 8888), CustomHandler).serve_forever()
+    port = int(sys.argv[1])
+    env = sys.argv[2]
+    server = Server()
+    src = Path(os.path.join(os.path.dirname(__file__), "./src"))
+
+    server.path("/", src)
+    server.redirect(301, "/", "/server/")
+
+    @server.api("/image", image_list=server.list_subpaths("/image/"))
+    def _(handler: CustomHandler, image_list):
+        server.WEB_DICT[random.choice(image_list)](handler)
+
+    server.path_mapping("/list", "/")
+    server.listing_src("/list", src)  # 用目录覆盖映射
+
+    print(f"IPv6 服务器正在启动,port:{port},env:{env}")
+    HTTPServerV6(("::", port), CustomHandler).serve_forever()

@@ -1,5 +1,6 @@
 import subprocess
 
-subprocess.Popen("python -m http.server 12345 --directory ./src/", shell=True)
-subprocess.Popen("python ipv4_server.py", shell=True)
-subprocess.Popen("python ipv6_server.py", shell=True)
+port = 8080
+env = "dev"
+subprocess.Popen(f"python ipv4_server.py {port} {env}", shell=True)
+subprocess.Popen(f"python ipv6_server.py {port} {env}", shell=True)

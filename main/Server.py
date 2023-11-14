@@ -9,6 +9,9 @@ from pathlib import Path
 class Server:
     WEB_DICT: Dict[str, Callable] = {}
 
+    def __init__(self, env: Literal["dev", "test", "prod"] = "dev"):
+        self.env = env
+
     @staticmethod
     def path_to_url(path: Path) -> str:
         result = str(path).replace("\\", "/")
@@ -39,12 +42,22 @@ class Server:
             src_path:本地资源路径
             Content_type:响应类型
         """
-        with open(src_path, "rb") as f:
-            resp = f.read()
 
-        @self.web(network_path, Content_type)
-        def _(handler: http.server.SimpleHTTPRequestHandler):
-            handler.wfile.write(resp)
+        if self.env == "prod":
+            with open(src_path, "rb") as f:
+                resp = f.read()
+
+            @self.web(network_path, Content_type)
+            def _(handler: http.server.SimpleHTTPRequestHandler):
+                handler.wfile.write(resp)
+
+        else:
+
+            @self.web(network_path, Content_type)
+            def _(handler: http.server.SimpleHTTPRequestHandler):
+                with open(src_path, "rb") as f:
+                    resp = f.read()
+                handler.wfile.write(resp)
 
     def html(self, network_path: Path, src_path: Path):
         self.file(network_path, src_path, "text/html")
