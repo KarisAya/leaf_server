@@ -1,55 +1,31 @@
-import socket
-import http.server
-import http.client
-import os
+import uvicorn
 import sys
 import random
 import json
-from pathlib import Path
+import page
+from lika.server import Server, ResponseMap
+from lika.response import Response
 from redirect_ipv6 import get_my_IPv6
-from Server import Server
-
-
-class CustomHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        self.path = self.path.rstrip("/") or "/"
-        if self.path in server.WEB_DICT:
-            return server.WEB_DICT[self.path](self)
-        self.send_response(404)
-        self.end_headers()
-
-    def do_POST(self):
-        self.path = self.path.rstrip("/") or "/"
-        if self.path in server.WEB_DICT:
-            return server.WEB_DICT[self.path](self)
-        self.send_response(404)
-        self.end_headers()
-
-
-class HTTPServerV6(http.server.HTTPServer):
-    address_family = socket.AF_INET6
-
 
 if __name__ == "__main__":
     port = int(sys.argv[1])
     env = sys.argv[2]
-    server = Server()
-    src = Path(os.path.join(os.path.dirname(__file__), "./src"))
-
-    server.path("/", src)
+    server = Server(env)
+    server.mount("/", "./src", True)
+    page.listing(server, "/list", "/")
     server.redirect(301, "/", "/server/")
 
-    @server.api("/image", image_list=server.list_subpaths("/image/"))
-    def _(handler: CustomHandler, image_list):
-        server.WEB_DICT[random.choice(image_list)](handler)
+    @server.api(
+        "/image",
+        image_list=[x["/"] for x in server.get_router("image").values() if "/" in x],
+    )
+    async def _(scope, receive, send, image_list: ResponseMap):
+        await random.choice(image_list)(scope, receive, send)
 
     @server.api("/terminal")
-    def _(handler: CustomHandler):
-        content_length = int(handler.headers["Content-Length"])
-        post_data = handler.rfile.read(content_length)
-        data = json.loads(post_data).get("data") if post_data else "none"
-        handler.send_response(200)
-        handler.end_headers()
+    async def _(scope, receive, send):
+        data = json.loads((await receive())["body"])
+        data = data["data"]
         resp = {}
         # 假的响应
         if data == "init":
@@ -57,11 +33,11 @@ if __name__ == "__main__":
             resp["contect"] = ""
         else:
             resp["path"] = "/server"
-            resp["contect"] = f"Recived:{data}"
-        handler.wfile.write(json.dumps(resp).encode())
+            resp["contect"] = f"recived:{data}"
+        await Response(
+            headers=[(b"Content-type", b"text/plain")],
+            bodys=[json.dumps(resp).encode()],
+            send_method=send,
+        ).send()
 
-    server.path_mapping("/list", "/")
-    server.listing_src("/list", src)  # 用目录覆盖映射
-
-    print(f"IPv6 服务器正在启动,port:{port},env:{env}")
-    HTTPServerV6(("::", port), CustomHandler).serve_forever()
+    uvicorn.run(server, host="::", port=port)

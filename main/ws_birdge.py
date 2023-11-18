@@ -39,12 +39,12 @@ async def handle_connection(websocket, path):
         "x-self-id": request_headers["x-self-id"],
     }
     print(extra_headers)
-    nonebot = await connect("ws://localhost:11590/onebot/v11/", extra_headers)
+    nonebot = await connect("ws://localhost:10001/onebot/v11/", extra_headers)
     await asyncio.gather(bridge(websocket, nonebot), bridge(nonebot, websocket))
 
 
 async def server():
-    server = await websockets.serve(handle_connection, "localhost", 11580)
+    server = await websockets.serve(handle_connection, "0.0.0.0", 11100)
     await server.wait_closed()
 
 
