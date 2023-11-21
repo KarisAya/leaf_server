@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from pathlib import Path
 import urllib.parse
 
@@ -25,5 +25,9 @@ class RouterPath(List[str]):
         return "".join(f"/{x}" for x in self) or "/"
 
     @property
+    def path(self) -> str:
+        return urllib.parse.unquote(self.url)
+
+    @property
     def name(self) -> str:
-        return (self or ["/"])[-1]
+        return urllib.parse.unquote((self or ["/"])[-1])

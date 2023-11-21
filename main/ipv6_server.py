@@ -3,7 +3,7 @@ import sys
 import random
 import json
 import page
-from lika.server import Server, ResponseMap
+from lika.server import Server, RouterMap
 from lika.response import Response
 from redirect_ipv6 import get_my_IPv6
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
         "/image",
         image_list=[x["/"] for x in server.get_router("image").values() if "/" in x],
     )
-    async def _(scope, receive, send, image_list: ResponseMap):
+    async def _(scope, receive, send, image_list: RouterMap):
         await random.choice(image_list)(scope, receive, send)
 
     @server.api("/terminal")

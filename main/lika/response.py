@@ -1,8 +1,27 @@
-from typing import Coroutine, Tuple, List
-
-Headers = List[Tuple[bytes, bytes]]
+from typing import Any, Tuple, List
 
 Bodys = List[bytes]
+
+
+class Headers(List[Tuple[bytes, bytes]]):
+    @staticmethod
+    def from_ext(ext: str) -> "Headers":
+        ext = ext.lstrip(".")
+        if ext in {"html"}:
+            return [(b"Content-type", b"text/html")]
+        elif ext in {"js"}:
+            return [(b"Content-type", b"application/javascript")]
+        elif ext in {"txt", "json"}:
+            return [(b"Content-type", b"text/plain")]
+        elif ext in {"jpg", "png", "jpeg", "gif", "webp"}:
+            return [(b"Content-type", f"image/{ext}".encode())]
+        elif ext in {"mp4", "avi", "mkv", "webm"}:
+            return [(b"Content-type", f"video/{ext}".encode())]
+        else:
+            return [
+                (b"Content-type", b"application/octet-stream"),
+                (b"Content-disposition", b"attachment"),
+            ]
 
 
 class Response:
@@ -11,9 +30,7 @@ class Response:
         code: int = 200,
         headers: Headers = [],
         bodys: Bodys = [b""],
-        send_method: Coroutine = None,
     ):
-        self._send = send_method
         self.bodys = [
             {
                 "type": "http.response.body",
@@ -29,16 +46,3 @@ class Response:
             "status": code,
             "headers": headers,
         }
-
-    @property
-    def send_method(self):
-        return self._send
-
-    @send_method.setter
-    def send_method(self, send_method: Coroutine):
-        self._send = send_method
-
-    async def send(self):
-        await self._send(self.start)
-        for body in self.bodys:
-            await self._send(body)
