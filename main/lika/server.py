@@ -70,10 +70,8 @@ class RouterMap(Dict[str, "RouterMap"]):
 
         def decorator(func):
             async def warpper(scope, receive, **others):
-                inner_kwargs = {}
-                inner_kwargs.update(kwargs)
-                inner_kwargs.update(others)
-                return await func(scope, receive, **inner_kwargs)
+                others.update(kwargs)
+                return await func(scope, receive, **others)
 
             router_map.app = warpper
 

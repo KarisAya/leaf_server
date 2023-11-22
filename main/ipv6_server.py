@@ -2,42 +2,39 @@ import uvicorn
 import sys
 import random
 import json
+from pathlib import Path
+
 import page
 from lika.server import Server, RouterMap
-from lika.response import Response
+from lika.response import Response, Headers
 from redirect_ipv6 import get_my_IPv6
 
 if __name__ == "__main__":
     port = int(sys.argv[1])
     env = sys.argv[2]
     server = Server(env)
-    server.mount("/", "./src", True)
-    page.listing(server, "/list", "/")
-    server.redirect(301, "/", "/server/")
+    root = server.router_map
+    root.mount("./src", True)
+    page.listing(root, "/list", "/")
+    root.redirect(301, "/", "/server/")
 
-    @server.api(
-        "/image",
-        image_list=[x["/"] for x in server.get_router("image").values() if "/" in x],
-    )
-    async def _(scope, receive, send, image_list: RouterMap):
-        await random.choice(image_list)(scope, receive, send)
+    @root.router("/image", image_src=list(Path("./src/image").iterdir()))
+    async def _(scope, receive, image_src: list):
+        image = random.choice(image_src)
+        with open(image, "rb") as f:
+            return Response(200, Headers.from_ext(image.suffix), [f.read()])
 
-    @server.api("/terminal")
-    async def _(scope, receive, send):
-        data = json.loads((await receive())["body"])
-        data = data["data"]
+    @root.router("/terminal")
+    async def _(scope, receive):
+        request = await receive()
+        data = request["body"].decode()
         resp = {}
-        # 假的响应
         if data == "init":
             resp["path"] = "/server"
             resp["contect"] = ""
         else:
             resp["path"] = "/server"
             resp["contect"] = f"recived:{data}"
-        await Response(
-            headers=[(b"Content-type", b"text/plain")],
-            bodys=[json.dumps(resp).encode()],
-            send_method=send,
-        ).send()
+        return Response(200, Headers.from_ext("txt"), [json.dumps(resp).encode()])
 
     uvicorn.run(server, host="::", port=port)
