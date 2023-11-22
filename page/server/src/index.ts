@@ -13,10 +13,11 @@ input_button.addEventListener('click', () => { sendData(input_text.value) });
 input_text.addEventListener('keydown', (event) => { if (event.key === 'Enter') { sendData(input_text.value) } });
 
 function sendData(command: string) {
+    if (command === "") { return }
     const requestOptions: RequestInit = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "data": command })
+        body: command,
     };
     output.innerHTML += command
     input_text.value = ""
@@ -32,6 +33,7 @@ function sendData(command: string) {
             if (data.contect === "") { resp = `<br>${data.path}> ` }
             else { resp = `<br>${data.contect} <br>${data.path}> ` }
             output.innerHTML += resp
+            output.scrollTop = output.scrollHeight;
         })
         .catch(error => {
             console.error('Error:', error);
